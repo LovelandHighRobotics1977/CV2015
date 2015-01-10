@@ -1,0 +1,5 @@
+CMAKE_MINIMUM_REQUIRED( VERSION 2.8 )
+PROJECT( CratePipeline )
+FIND_PACKAGE( OpenCV REQUIRED )
+ADD_EXECUTABLE( CratePipeline CratePipeline.cpp )
+TARGET_LINK_LIBRARIES( CratePipeline ${OpenCV_LIBS} )
