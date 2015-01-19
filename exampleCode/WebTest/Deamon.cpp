@@ -64,6 +64,8 @@ int getImage()
 static int
 answer_to_connection( void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls )
 {
+    printf( "Request URL: %s\n", url );
+
 #if 0
     const char *page = "<html><body>Hello, browser!</body></html>";
     struct MHD_Response *response;
@@ -76,22 +78,25 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
 #endif
 
 #if 1
-    struct MHD_Response *response;
-    int ret;
-    int bufLength;
+    if( strcmp( url, "/camera/raw" ) == 0 )
+    {
+        struct MHD_Response *response;
+        int ret;
+        int bufLength;
 
-    bufLength = getImage();
+        bufLength = getImage();
 
-    printf( "Sending image -- size: %d\n", bufLength );
+        printf( "Sending image -- size: %d\n", bufLength );
 
-    if( bufLength == 0 )
-        return MHD_NO;
+        if( bufLength == 0 )
+            return MHD_NO;
 
-    response = MHD_create_response_from_buffer( bufLength, (void *) imageBuf, MHD_RESPMEM_PERSISTENT );
-    MHD_add_response_header( response, "Content-Type", MIMETYPE );
-    ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
-    MHD_destroy_response( response );
-    return ret;
+        response = MHD_create_response_from_buffer( bufLength, (void *) imageBuf, MHD_RESPMEM_PERSISTENT );
+        MHD_add_response_header( response, "Content-Type", MIMETYPE );
+        ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
+        MHD_destroy_response( response );
+        return ret;
+    }
 #endif
 
 #if 0
@@ -137,6 +142,20 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
     return ret;
 
 #endif
+
+    const char *errorstr = "<html><body>Request not understood.</body></html>";
+  
+    response = MHD_create_response_from_buffer( strlen( errorstr ), (void *) errorstr, MHD_RESPMEM_PERSISTENT );
+
+    if( response )
+    {
+        ret = MHD_queue_response( connection, MHD_HTTP_INTERNAL_SERVER_ERROR, response );
+        MHD_destroy_response( response );
+        return MHD_YES;
+    }
+    else
+        return MHD_NO;
+
 }
 
 int
