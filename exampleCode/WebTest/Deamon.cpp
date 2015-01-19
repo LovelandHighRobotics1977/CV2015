@@ -15,6 +15,9 @@
 
 #include <raspicam/raspicam_still_cv.h>
 
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 using namespace std;
 
 #define PORT 8888
@@ -70,6 +73,10 @@ int getToteImage()
 
     Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
     Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
+
+    //printf( "Format: %d\n", Camera.getFormat() );
+
+
     Camera.open();
 
     cv::Mat image;
@@ -86,23 +93,24 @@ int getToteImage()
     cout << "saving picture.jpg" << endl;
 
     //cv::imwrite( "StillCamTest.jpg", image );
-    Mat src; Mat src_gray; Mat dst;
+    cv::Mat src; cv::Mat src_gray; cv::Mat dst;
 
     /// Convert image to gray and blur it
-    cvtColor( image, src_gray, CV_BGR2HSV );
-    blur( src_gray, src_gray, Size(3,3) );
+    cv::cvtColor( image, src_gray, CV_BGR2HSV );
+    cv::blur( src_gray, src_gray, cv::Size(3,3) );
 
-    inRange( src_gray, Scalar(20, 100, 100), Scalar(30, 255, 255), src_gray);
+    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
 
     //MORPH_RECT
     //MORPH_CROSS
     //MORPH_ELLIPSE
 
-    erosion_size = 4;
-    Mat element = getStructuringElement( MORPH_RECT, Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point( erosion_size, erosion_size ) );
+    //int erosion_size = 4;
+    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
 
     /// Apply the erosion operation
-    erode( src_gray, src_gray, element );
+    //cv::erode( src_gray, src_gray, element );
 
     cv::vector<uchar> buf;
     cv::imencode(".jpg", src_gray, buf, std::vector<int>() );
