@@ -61,6 +61,58 @@ int getImage()
     return buf.size();
 }
 
+int getToteImage()
+{
+    int width  = 1280;
+    int height = 960;
+
+    cout << "Initializing ..." << width << "x" << height << endl;
+
+    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
+    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
+    Camera.open();
+
+    cv::Mat image;
+
+    cout << "capturing" << endl;
+
+    if( !Camera.grab() )
+    {
+        cerr << "Error in grab" << endl;
+        return 0;
+    }
+
+    Camera.retrieve( image );
+    cout << "saving picture.jpg" << endl;
+
+    //cv::imwrite( "StillCamTest.jpg", image );
+    Mat src; Mat src_gray; Mat dst;
+
+    /// Convert image to gray and blur it
+    cvtColor( image, src_gray, CV_BGR2HSV );
+    blur( src_gray, src_gray, Size(3,3) );
+
+    inRange( src_gray, Scalar(20, 100, 100), Scalar(30, 255, 255), src_gray);
+
+    //MORPH_RECT
+    //MORPH_CROSS
+    //MORPH_ELLIPSE
+
+    erosion_size = 4;
+    Mat element = getStructuringElement( MORPH_RECT, Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point( erosion_size, erosion_size ) );
+
+    /// Apply the erosion operation
+    erode( src_gray, src_gray, element );
+
+    cv::vector<uchar> buf;
+    cv::imencode(".jpg", src_gray, buf, std::vector<int>() );
+    
+    imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
+    memcpy( imageBuf, &buf[0], buf.size() );
+
+    return buf.size();
+}
+
 static int
 answer_to_connection( void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls )
 {
@@ -88,6 +140,28 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
         int bufLength;
 
         bufLength = getImage();
+
+        printf( "Sending image -- size: %d\n", bufLength );
+
+        if( bufLength == 0 )
+            return MHD_NO;
+
+        response = MHD_create_response_from_buffer( bufLength, (void *) imageBuf, MHD_RESPMEM_PERSISTENT );
+        MHD_add_response_header( response, "Content-Type", MIMETYPE );
+        ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
+        MHD_destroy_response( response );
+        return ret;
+    }
+#endif
+
+#if 1
+    if( ( strcmp( url, "/tote/image" ) == 0 ) || ( strcmp( url, "/tote/image/" ) == 0 ) )
+    {
+        //struct MHD_Response *response;
+        //int ret;
+        int bufLength;
+
+        bufLength = getToteImage();
 
         printf( "Sending image -- size: %d\n", bufLength );
 
