@@ -11,8 +11,11 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
+#include <vector>
 
 #include <raspicam/raspicam_still_cv.h>
+
+using namespace std;
 
 #define PORT 8888
 #define FILENAME "../../TestImages/yellow_crate2.jpg"
@@ -50,7 +53,7 @@ int getImage()
     //cv::imwrite( "StillCamTest.jpg", image );
 
     cv::vector<uchar> buf;
-    cv:: imencode(".jpg", image, buf, std::vaector<int>() );
+    cv::imencode(".jpg", image, buf, std::vector<int>() );
     
     imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
     memcpy( imageBuf, &buf[0], buf.size() );

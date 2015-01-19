@@ -9,7 +9,7 @@ IF( OpenCV_FOUND AND raspicam_CV_FOUND )
     MESSAGE( STATUS "COMPILING WEB TESTS" )
 
     ADD_EXECUTABLE( WebTest Deamon.cpp )  
-    #TARGET_LINK_LIBRARIES( WebTest ${raspicam_CV_LIBS} )
+    TARGET_LINK_LIBRARIES( WebTest ${raspicam_CV_LIBS} )
     TARGET_LINK_LIBRARIES( WebTest -lmicrohttpd )
 
 ELSE()
