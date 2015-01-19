@@ -8,7 +8,13 @@
 #include <fcntl.h>
 #include <microhttpd.h>
 
-#define PORT 80
+#include <iostream>
+#include <fstream>
+#include <cstdlib>
+
+#include <raspicam/raspicam_still_cv.h>
+
+#define PORT 8888
 #define FILENAME "../../TestImages/yellow_crate2.jpg"
 //#define FILENAME "../../../Notes.txt"
 #define MIMETYPE "image/jpg"
