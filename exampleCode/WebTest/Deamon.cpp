@@ -64,12 +64,15 @@ int getImage()
 static int
 answer_to_connection( void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls )
 {
+    struct MHD_Response *response;
+    int ret;
+
     printf( "Request URL: %s\n", url );
 
 #if 0
     const char *page = "<html><body>Hello, browser!</body></html>";
-    struct MHD_Response *response;
-    int ret;
+    //struct MHD_Response *response;
+    //int ret;
 
     response = MHD_create_response_from_buffer( strlen( page ), (void *) page, MHD_RESPMEM_PERSISTENT );
     ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
@@ -80,8 +83,8 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
 #if 1
     if( strcmp( url, "/camera/raw" ) == 0 )
     {
-        struct MHD_Response *response;
-        int ret;
+        //struct MHD_Response *response;
+        //int ret;
         int bufLength;
 
         bufLength = getImage();
@@ -100,9 +103,9 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
 #endif
 
 #if 0
-    struct MHD_Response *response;
+    //struct MHD_Response *response;
     int fd;
-    int ret;
+    //int ret;
     struct stat sbuf;
 
     if( 0 != strcmp (method, "GET") )
