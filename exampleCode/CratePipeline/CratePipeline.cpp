@@ -26,6 +26,7 @@ IplImage* GetThresholdedImage(IplImage* img)
 }
 
 Mat src; Mat src_gray; Mat dst;
+int erosion_size = 2;
 
 int main( int argc, char** argv )
 {
@@ -46,6 +47,16 @@ int main( int argc, char** argv )
 
   inRange( src_gray, Scalar(20, 100, 100), Scalar(30, 255, 255), src_gray);
 
+  //MORPH_RECT
+  //MORPH_CROSS
+  //MORPH_ELLIPSE
+
+  erosion_size = 4;
+  Mat element = getStructuringElement( MORPH_RECT, Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point( erosion_size, erosion_size ) );
+
+  /// Apply the erosion operation
+  erode( src_gray, src_gray, element );
+
   char* gray_window = "GrayScale";
   namedWindow( gray_window, CV_WINDOW_AUTOSIZE );
   imshow( gray_window, src_gray );
@@ -53,12 +64,13 @@ int main( int argc, char** argv )
   //createTrackbar( " Canny thresh:", "Source", &thresh, max_thresh, thresh_callback );
   //thresh_callback( 0, 0 );
 
-  Mat canny_output;
+  //Mat canny_output;
   vector<vector<Point> > contours;
   vector<Vec4i> hierarchy;
-  int thresh = 100;
-  int max_thresh = 255;
+  //int thresh = 100;
+  //int max_thresh = 255;
   RNG rng(12345);
+
 
   /// Detect edges using canny
   //Canny( src_gray, canny_output, thresh, thresh*2, 3 );
@@ -71,9 +83,65 @@ int main( int argc, char** argv )
   Mat drawing = Mat::zeros( src_gray.size(), CV_8UC3 );
   for( int i = 0; i< contours.size(); i++ )
   {
-      Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-      drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+      double CA = contourArea( contours[i], false );
+      printf( "Countour( %d ) - Area: %g \n", i, CA );
+      if( CA >= 50000 )
+      {
+         Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+         drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+
+         Moments cm = moments( contours[i] );
+    
+         printf( "m00: %g\n", cm.m00 );
+         printf( "m10: %g\n", cm.m10 );
+         printf( "m01: %g\n", cm.m01 );
+         printf( "m20: %g\n", cm.m20 );
+         printf( "m11: %g\n", cm.m11 );
+         printf( "m02: %g\n", cm.m02 );
+         printf( "m30: %g\n", cm.m30 );
+         printf( "m21: %g\n", cm.m21 );
+         printf( "m12: %g\n", cm.m12 );
+         printf( "m03: %g\n", cm.m03 );
+
+         printf( "mu20: %g\n", cm.mu20 );
+         printf( "mu11: %g\n", cm.mu11 );
+         printf( "mu02: %g\n", cm.mu02 );
+         printf( "mu30: %g\n", cm.mu30 );
+         printf( "mu21: %g\n", cm.mu21 );
+         printf( "mu12: %g\n", cm.mu12 );
+         printf( "mu03: %g\n", cm.mu03 );
+
+         printf( "nu20: %g\n", cm.nu20 );
+         printf( "nu11: %g\n", cm.nu11 );
+         printf( "nu02: %g\n", cm.nu02 );
+         printf( "nu30: %g\n", cm.nu30 );
+         printf( "nu21: %g\n", cm.nu21 );
+         printf( "nu12: %g\n", cm.nu12 );
+         printf( "nu03: %g\n", cm.nu03 );
+         
+         printf( "xbar: %g\n", (cm.m10/cm.m00) );
+         printf( "ybar: %g\n", (cm.m01/cm.m00) );
+         // central moments
+         //double  mu20, mu11, mu02, mu30, mu21, mu12, mu03;
+         // central normalized moments
+         //double  nu20, nu11, nu02, nu30, nu21, nu12, nu03
+
+         double hu[7];
+         HuMoments(cm, hu);
+
+         printf( "hu0: %g\n", hu[0] );
+         printf( "hu1: %g\n", hu[1] );
+         printf( "hu2: %g\n", hu[2] );
+         printf( "hu3: %g\n", hu[3] );
+         printf( "hu4: %g\n", hu[4] );
+         printf( "hu5: %g\n", hu[5] );
+         printf( "hu6: %g\n", hu[6] );
+
+         circle( drawing, Point( (cm.m10/cm.m00), (cm.m01/cm.m00) ), 2, color );
+      }
   }
+
+  // Calculate the moments
 
   /// Show in a window
   namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
