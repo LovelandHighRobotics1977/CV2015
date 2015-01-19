@@ -4,10 +4,13 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <microhttpd.h>
 
-#define PORT 8888
+#define PORT 80
 #define FILENAME "../../TestImages/yellow_crate2.jpg"
+//#define FILENAME "../../../Notes.txt"
 #define MIMETYPE "image/jpg"
 
 static int
@@ -57,7 +60,9 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
             return MHD_NO;
     }
 
-    response = MHD_create_response_from_fd_at_offset( sbuf.st_size, fd, 0 );
+    printf( "Sending image -- size: %d\n", sbuf.st_size );
+ 
+    response = MHD_create_response_from_fd( sbuf.st_size, fd );
     MHD_add_response_header( response, "Content-Type", MIMETYPE );
     ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
     MHD_destroy_response( response );
