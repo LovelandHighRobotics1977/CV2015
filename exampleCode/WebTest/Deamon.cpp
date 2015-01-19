@@ -7,22 +7,64 @@
 #include <microhttpd.h>
 
 #define PORT 8888
+#define FILENAME "../../TestImages/yellow_crate2.jpg"
+#define MIMETYPE "image/jpg"
 
 static int
-answer_to_connection (void *cls, struct MHD_Connection *connection,
-const char *url, const char *method,
-const char *version, const char *upload_data,
-size_t *upload_data_size, void **con_cls)
+answer_to_connection( void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls )
 {
+#if 0
     const char *page = "<html><body>Hello, browser!</body></html>";
     struct MHD_Response *response;
     int ret;
-    response =  
-        MHD_create_response_from_buffer (strlen (page), (void *) page,
-        MHD_RESPMEM_PERSISTENT);
-    ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
-    MHD_destroy_response (response);
+
+    response = MHD_create_response_from_buffer( strlen( page ), (void *) page, MHD_RESPMEM_PERSISTENT );
+    ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
+    MHD_destroy_response( response );
     return ret;
+#endif
+
+#if 1
+    struct MHD_Response *response;
+    int fd;
+    int ret;
+    struct stat sbuf;
+
+    if( 0 != strcmp (method, "GET") )
+    {
+        return MHD_NO;
+    }
+
+    if( (-1 == (fd = open( FILENAME, O_RDONLY ))) || (0 != fstat( fd, &sbuf )) )
+    {
+        /* error accessing file */
+        if( fd != -1 ) 
+        {
+            close (fd);
+        }
+
+        const char *errorstr = "<html><body>An internal server error has occured!</body></html>";
+  
+        response = MHD_create_response_from_buffer( strlen( errorstr ), (void *) errorstr, MHD_RESPMEM_PERSISTENT );
+
+        if( response )
+        {
+            ret = MHD_queue_response( connection, MHD_HTTP_INTERNAL_SERVER_ERROR, response );
+            MHD_destroy_response( response );
+            return MHD_YES;
+        }
+        else
+            return MHD_NO;
+    }
+
+    response = MHD_create_response_from_fd_at_offset( sbuf.st_size, fd, 0 );
+    MHD_add_response_header( response, "Content-Type", MIMETYPE );
+    ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
+    MHD_destroy_response( response );
+    
+    return ret;
+
+#endif
 }
 
 int
