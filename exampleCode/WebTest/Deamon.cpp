@@ -78,7 +78,7 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
 #endif
 
 #if 1
-    if( strcmp( url, "/camera/raw" ) == 0 )
+    if( ( strcmp( url, "/camera/raw" ) == 0 ) || ( strcmp( url, "/camera/raw/" ) == 0 ) )
     {
         struct MHD_Response *response;
         int ret;
