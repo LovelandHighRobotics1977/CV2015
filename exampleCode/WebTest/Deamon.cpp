@@ -13,6 +13,45 @@
 //#define FILENAME "../../../Notes.txt"
 #define MIMETYPE "image/jpg"
 
+raspicam::RaspiCam_Still_Cv Camera;
+
+unsigned char *imageBuf = NULL;
+
+int getImage()
+{
+    int width  = 1280;
+    int height = 960;
+
+    cout << "Initializing ..." << width << "x" << height << endl;
+
+    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
+    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
+    Camera.open();
+
+    cv::Mat image;
+
+    cout << "capturing" << endl;
+
+    if( !Camera.grab() )
+    {
+        cerr << "Error in grab" << endl;
+        return 0;
+    }
+
+    Camera.retrieve( image );
+    cout << "saving picture.jpg" << endl;
+
+    //cv::imwrite( "StillCamTest.jpg", image );
+
+    cv::vector<uchar> buf;
+    cv:: imencode(".jpg", image, buf, std::vaector<int>() );
+    
+    imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
+    memcpy( imageBuf, &buf[0], buf.size() );
+
+    return buf.size();
+}
+
 static int
 answer_to_connection( void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls )
 {
@@ -28,6 +67,25 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
 #endif
 
 #if 1
+    struct MHD_Response *response;
+    int ret;
+    int bufLength;
+
+    bufLength = getImage();
+
+    printf( "Sending image -- size: %d\n", bufLength );
+
+    if( bufLength == 0 )
+        return MHD_NO;
+
+    response = MHD_create_response_from_buffer( bufLength, (void *) imageBuf, MHD_RESPMEM_PERSISTENT );
+    MHD_add_response_header( response, "Content-Type", MIMETYPE );
+    ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
+    MHD_destroy_response( response );
+    return ret;
+#endif
+
+#if 0
     struct MHD_Response *response;
     int fd;
     int ret;
