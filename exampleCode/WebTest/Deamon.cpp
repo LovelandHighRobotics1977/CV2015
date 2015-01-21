@@ -37,9 +37,9 @@ bool startCamera()
     Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
     Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
     Camera.set ( CV_CAP_PROP_BRIGHTNESS, 50 );
-    Camera.set ( CV_CAP_PROP_CONTRAST, 50 ) );
-    Camera.set ( CV_CAP_PROP_SATURATION, 50 ) );
-    Camera.set ( CV_CAP_PROP_GAIN, 50 ) );
+    Camera.set ( CV_CAP_PROP_CONTRAST, 50 );
+    Camera.set ( CV_CAP_PROP_SATURATION, 50 );
+    Camera.set ( CV_CAP_PROP_GAIN, 50 );
     //Camera.set ( CV_CAP_PROP_FORMAT, CV_8UC1 ); // Do Gray Scale
     //Camera.set ( CV_CAP_PROP_EXPOSURE, ?  );
 
@@ -49,7 +49,7 @@ bool startCamera()
         return true;
     }
 
-    cout<<"Connected to camera ="<<Camera.getId() <<endl
+    cout<<"Connected to camera ="<<Camera.getId() <<endl;
 
     return false;
 }
@@ -81,8 +81,6 @@ int getImage()
     }
 
     Camera.retrieve( image );
-
-    Camera.release();
 
     //cv::imwrite( "StillCamTest.jpg", image );
 
@@ -120,7 +118,6 @@ int getToteImage()
     }
 
     Camera.retrieve( image );
-    Camera.release();
 
     //cv::imwrite( "StillCamTest.jpg", image );
     cv::Mat src; cv::Mat src_gray; cv::Mat dst;
@@ -280,7 +277,7 @@ main ()
 
     // Try to open the camera
     if( startCamera() )
-        return;
+        return 1;
 
     daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &answer_to_connection, NULL, MHD_OPTION_END );
 
