@@ -13,7 +13,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include <raspicam/raspicam_still_cv.h>
+#include <raspicam/raspicam_cv.h>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -25,7 +25,7 @@ using namespace std;
 //#define FILENAME "../../../Notes.txt"
 #define MIMETYPE "image/jpg"
 
-raspicam::RaspiCam_Still_Cv Camera;
+raspicam::RaspiCam_Cv Camera;
 
 unsigned char *imageBuf = NULL;
 
@@ -51,7 +51,8 @@ int getImage()
     }
 
     Camera.retrieve( image );
-    cout << "saving picture.jpg" << endl;
+
+    Camera.release();
 
     //cv::imwrite( "StillCamTest.jpg", image );
 
@@ -90,7 +91,7 @@ int getToteImage()
     }
 
     Camera.retrieve( image );
-    cout << "saving picture.jpg" << endl;
+    Camera.release();
 
     //cv::imwrite( "StillCamTest.jpg", image );
     cv::Mat src; cv::Mat src_gray; cv::Mat dst;
