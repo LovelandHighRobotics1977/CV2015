@@ -229,7 +229,7 @@ or similar
 
 ============================================Notes about raspicam install======================================================
 1. The standard install defaults to /usr/local, so use something like "cmake -DCMAKE_INSTALL_PREFIX=/usr .." to get same install path as opencv libs.
-2. The install copies the CMAKE finder modules to /use/lib/cmake, copy those to /use/share/cmake-2.8/Modules instead so CMAKE can find them.
+2. The install copies the CMAKE finder modules to /usr/lib/cmake, copy those to /use/share/cmake-2.8/Modules instead so CMAKE can find them.
 
 
 

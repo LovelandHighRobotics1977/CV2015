@@ -15,6 +15,9 @@
 
 #include <raspicam/raspicam_cv.h>
 
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+
 using namespace std;
 
 #define PORT 8888
@@ -89,15 +92,75 @@ int getImage()
     return buf.size();
 }
 
+int getToteImage()
+{
+    int width  = 1280;
+    int height = 960;
+
+    cout << "Initializing ..." << width << "x" << height << endl;
+
+    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
+    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
+
+    //printf( "Format: %d\n", Camera.getFormat() );
+
+
+    Camera.open();
+
+    cv::Mat image;
+
+    cout << "capturing" << endl;
+
+    if( !Camera.grab() )
+    {
+        cerr << "Error in grab" << endl;
+        return 0;
+    }
+
+    Camera.retrieve( image );
+    cout << "saving picture.jpg" << endl;
+
+    //cv::imwrite( "StillCamTest.jpg", image );
+    cv::Mat src; cv::Mat src_gray; cv::Mat dst;
+
+    /// Convert image to gray and blur it
+    cv::cvtColor( image, src_gray, CV_BGR2HSV );
+    cv::blur( src_gray, src_gray, cv::Size(3,3) );
+
+    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
+
+    //MORPH_RECT
+    //MORPH_CROSS
+    //MORPH_ELLIPSE
+
+    //int erosion_size = 4;
+    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
+
+    /// Apply the erosion operation
+    //cv::erode( src_gray, src_gray, element );
+
+    cv::vector<uchar> buf;
+    cv::imencode(".jpg", src_gray, buf, std::vector<int>() );
+    
+    imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
+    memcpy( imageBuf, &buf[0], buf.size() );
+
+    return buf.size();
+}
+
 static int
 answer_to_connection( void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls )
 {
+    struct MHD_Response *response;
+    int ret;
+
     printf( "Request URL: %s\n", url );
 
 #if 0
     const char *page = "<html><body>Hello, browser!</body></html>";
-    struct MHD_Response *response;
-    int ret;
+    //struct MHD_Response *response;
+    //int ret;
 
     response = MHD_create_response_from_buffer( strlen( page ), (void *) page, MHD_RESPMEM_PERSISTENT );
     ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
@@ -108,8 +171,8 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
 #if 1
     if( ( strcmp( url, "/camera/raw" ) == 0 ) || ( strcmp( url, "/camera/raw/" ) == 0 ) )
     {
-        struct MHD_Response *response;
-        int ret;
+        //struct MHD_Response *response;
+        //int ret;
         int bufLength;
 
         bufLength = getImage();
@@ -127,10 +190,32 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
     }
 #endif
 
+#if 1
+    if( ( strcmp( url, "/tote/image" ) == 0 ) || ( strcmp( url, "/tote/image/" ) == 0 ) )
+    {
+        //struct MHD_Response *response;
+        //int ret;
+        int bufLength;
+
+        bufLength = getToteImage();
+
+        printf( "Sending image -- size: %d\n", bufLength );
+
+        if( bufLength == 0 )
+            return MHD_NO;
+
+        response = MHD_create_response_from_buffer( bufLength, (void *) imageBuf, MHD_RESPMEM_PERSISTENT );
+        MHD_add_response_header( response, "Content-Type", MIMETYPE );
+        ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
+        MHD_destroy_response( response );
+        return ret;
+    }
+#endif
+
 #if 0
-    struct MHD_Response *response;
+    //struct MHD_Response *response;
     int fd;
-    int ret;
+    //int ret;
     struct stat sbuf;
 
     if( 0 != strcmp (method, "GET") )
