@@ -126,8 +126,8 @@ int getToteImage()
     cv::cvtColor( image, src_gray, CV_BGR2HSV );
     cv::blur( src_gray, src_gray, cv::Size(3,3) );
 
-    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
-    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
+    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
 
     //MORPH_RECT
     //MORPH_CROSS
