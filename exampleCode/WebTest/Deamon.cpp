@@ -46,10 +46,12 @@ bool startCamera()
     cout<<"Connecting to camera"<<endl;
     if ( !Camera.open() ) {
         cerr<<"Error opening camera"<<endl;
-        return -1;
+        return true;
     }
 
     cout<<"Connected to camera ="<<Camera.getId() <<endl
+
+    return false;
 }
 
 void stopCamera()
@@ -94,18 +96,17 @@ int getImage()
 
 int getToteImage()
 {
-    int width  = 1280;
-    int height = 960;
+//    int width  = 1280;
+//    int height = 960;
 
-    cout << "Initializing ..." << width << "x" << height << endl;
+//    cout << "Initializing ..." << width << "x" << height << endl;
 
-    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
-    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
+//    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
+//    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
 
     //printf( "Format: %d\n", Camera.getFormat() );
 
-
-    Camera.open();
+//    Camera.open();
 
     cv::Mat image;
 
