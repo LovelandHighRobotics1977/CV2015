@@ -13,7 +13,7 @@
 #include <cstdlib>
 #include <vector>
 
-#include <raspicam/raspicam_still_cv.h>
+#include <raspicam/raspicam_cv.h>
 
 using namespace std;
 
@@ -22,20 +22,48 @@ using namespace std;
 //#define FILENAME "../../../Notes.txt"
 #define MIMETYPE "image/jpg"
 
-raspicam::RaspiCam_Still_Cv Camera;
+raspicam::RaspiCam_Cv Camera;
 
 unsigned char *imageBuf = NULL;
 
-int getImage()
+bool startCamera()
 {
     int width  = 1280;
     int height = 960;
 
-    cout << "Initializing ..." << width << "x" << height << endl;
-
     Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
     Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
-    Camera.open();
+    Camera.set ( CV_CAP_PROP_BRIGHTNESS, 50 );
+    Camera.set ( CV_CAP_PROP_CONTRAST, 50 ) );
+    Camera.set ( CV_CAP_PROP_SATURATION, 50 ) );
+    Camera.set ( CV_CAP_PROP_GAIN, 50 ) );
+    //Camera.set ( CV_CAP_PROP_FORMAT, CV_8UC1 ); // Do Gray Scale
+    //Camera.set ( CV_CAP_PROP_EXPOSURE, ?  );
+
+    cout<<"Connecting to camera"<<endl;
+    if ( !Camera.open() ) {
+        cerr<<"Error opening camera"<<endl;
+        return -1;
+    }
+
+    cout<<"Connected to camera ="<<Camera.getId() <<endl
+}
+
+void stopCamera()
+{
+    Camera.release();
+}
+
+int getImage()
+{
+//    int width  = 1280;
+//    int height = 960;
+
+//    cout << "Initializing ..." << width << "x" << height << endl;
+
+//    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
+//    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
+//    Camera.open();
 
     cv::Mat image;
 
@@ -163,6 +191,10 @@ main ()
 {
     struct MHD_Daemon *daemon;
 
+    // Try to open the camera
+    if( startCamera() )
+        return;
+
     daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &answer_to_connection, NULL, MHD_OPTION_END );
 
     if (NULL == daemon)
@@ -171,6 +203,9 @@ main ()
     getchar ();
 
     MHD_stop_daemon (daemon);
+
+    // Close the camera
+    stopCamera();
 
     return 0;
 }
