@@ -12,6 +12,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <vector>
+#include <strstream>
 
 #include <raspicam/raspicam_cv.h>
 
@@ -231,7 +232,7 @@ int getContourImage()
 std::string getContourData()
 {
     cv::Mat     image;
-    std::string rspData;
+    stringstream rspData;;
 
     cout << "capturing" << endl;
 
@@ -264,7 +265,7 @@ std::string getContourData()
     /// Find contours
     findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
 
-    rspData = "<tote-list>";
+    rspData << "<tote-list>";
 
     /// Draw contours
     cv::Mat drawing = cv::Mat::zeros( src_gray.size(), CV_8UC3 );
@@ -276,17 +277,17 @@ std::string getContourData()
         {
              cv::Moments cm = moments( contours[i] );
 
-             rspData += "<tote>";
-             rspData += "<contour-area>" + CA + "</contour-area>";
-             rspData += "<centroid-x>" + (cm.m10/cm.m00) + "</centroid-x>";
-             rspData += "<centroid-y>" + (cm.m01/cm.m00) + "</centroid-y>";
-             rspData += "</tote>";
+             rspData << "<tote>";
+             rspData << "<contour-area>" << CA << "</contour-area>";
+             rspData << "<centroid-x>" << (cm.m10/cm.m00) << "</centroid-x>";
+             rspData << "<centroid-y>" << (cm.m01/cm.m00) << "</centroid-y>";
+             rspData << "</tote>";
         }
     }
 
-    rspData += "</tote-list>";
+    rspData << "</tote-list>";
 
-    return rspData;
+    return rspData.str();
 }
 
 static int
