@@ -227,6 +227,10 @@ int getContourImage()
       {
          cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
          drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, cv::Point() );
+
+         cv::Moments cm = moments( contours[i] );
+
+         circle( drawing, cv::Point( (cm.m10/cm.m00), (cm.m01/cm.m00) ), 2, color );
       }
   }
 
