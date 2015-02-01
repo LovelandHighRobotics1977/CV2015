@@ -148,6 +148,98 @@ int getToteImage()
     return buf.size();
 }
 
+int getContourImage()
+{
+//    int width  = 1280;
+//    int height = 960;
+
+//    cout << "Initializing ..." << width << "x" << height << endl;
+
+//    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
+//    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
+
+    //printf( "Format: %d\n", Camera.getFormat() );
+
+//    Camera.open();
+
+    cv::Mat image;
+
+    cout << "capturing" << endl;
+
+    if( !Camera.grab() )
+    {
+        cerr << "Error in grab" << endl;
+        return 0;
+    }
+
+    Camera.retrieve( image );
+
+    //cv::imwrite( "StillCamTest.jpg", image );
+    cv::Mat src; cv::Mat src_gray; cv::Mat dst;
+
+    /// Convert image to gray and blur it
+    cv::cvtColor( image, src_gray, CV_BGR2HSV );
+    cv::blur( src_gray, src_gray, cv::Size(3,3) );
+
+    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
+
+    //MORPH_RECT
+    //MORPH_CROSS
+    //MORPH_ELLIPSE
+
+    //int erosion_size = 4;
+    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
+
+    /// Apply the erosion operation
+    //cv::erode( src_gray, src_gray, element );
+
+  erosion_size = 4;
+  Mat element = getStructuringElement( MORPH_RECT, Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point( erosion_size, erosion_size ) );
+
+  /// Apply the erosion operation
+  erode( src_gray, src_gray, element );
+
+  char* gray_window = "GrayScale";
+  namedWindow( gray_window, CV_WINDOW_AUTOSIZE );
+  imshow( gray_window, src_gray );
+
+  //createTrackbar( " Canny thresh:", "Source", &thresh, max_thresh, thresh_callback );
+  //thresh_callback( 0, 0 );
+
+  //Mat canny_output;
+  vector<vector<Point> > contours;
+  vector<Vec4i> hierarchy;
+  //int thresh = 100;
+  //int max_thresh = 255;
+  RNG rng(12345);
+
+  /// Find contours
+  findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+  /// Draw contours
+  Mat drawing = Mat::zeros( src_gray.size(), CV_8UC3 );
+  for( int i = 0; i< contours.size(); i++ )
+  {
+      double CA = contourArea( contours[i], false );
+      printf( "Countour( %d ) - Area: %g \n", i, CA );
+      if( CA >= 50000 )
+      {
+         Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+         drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+      }
+  }
+
+    cv::vector<uchar> buf;
+    cv::imencode(".jpg", drawing, buf, std::vector<int>() );
+    
+    imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
+    memcpy( imageBuf, &buf[0], buf.size() );
+
+    return buf.size();
+}
+
+
 static int
 answer_to_connection( void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls )
 {
@@ -197,6 +289,28 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
         int bufLength;
 
         bufLength = getToteImage();
+
+        printf( "Sending image -- size: %d\n", bufLength );
+
+        if( bufLength == 0 )
+            return MHD_NO;
+
+        response = MHD_create_response_from_buffer( bufLength, (void *) imageBuf, MHD_RESPMEM_PERSISTENT );
+        MHD_add_response_header( response, "Content-Type", MIMETYPE );
+        ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
+        MHD_destroy_response( response );
+        return ret;
+    }
+#endif
+
+#if 1
+    if( ( strcmp( url, "/tote/contours" ) == 0 ) || ( strcmp( url, "/tote/contours/" ) == 0 ) )
+    {
+        //struct MHD_Response *response;
+        //int ret;
+        int bufLength;
+
+        bufLength = getContourImage();
 
         printf( "Sending image -- size: %d\n", bufLength );
 
