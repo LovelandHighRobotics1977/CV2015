@@ -228,6 +228,66 @@ int getContourImage()
     return buf.size();
 }
 
+std::string getContourData()
+{
+    cv::Mat     image;
+    std::string rspData;
+
+    cout << "capturing" << endl;
+
+    if( !Camera.grab() )
+    {
+        cerr << "Error in grab" << endl;
+        return 0;
+    }
+
+    Camera.retrieve( image );
+
+    cv::Mat src; cv::Mat src_gray; cv::Mat dst;
+
+    /// Convert image to gray and blur it
+    cv::cvtColor( image, src_gray, CV_BGR2HSV );
+    cv::blur( src_gray, src_gray, cv::Size(3,3) );
+
+    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+
+    int erosion_size = 4;
+    cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
+
+    /// Apply the erosion operation
+    cv::erode( src_gray, src_gray, element );
+
+    vector<vector<cv::Point> > contours;
+    vector<cv::Vec4i> hierarchy;
+    cv::RNG rng(12345);
+
+    /// Find contours
+    findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
+
+    rspData = "<tote-list>";
+
+    /// Draw contours
+    cv::Mat drawing = cv::Mat::zeros( src_gray.size(), CV_8UC3 );
+    for( int i = 0; i< contours.size(); i++ )
+    {
+        double CA = contourArea( contours[i], false );
+        printf( "Countour( %d ) - Area: %g \n", i, CA );
+        if( CA >= 50000 )
+        {
+             cv::Moments cm = moments( contours[i] );
+
+             rspData += "<tote>";
+             rspData += "<contour-area>" + CA + "</contour-area>";
+             rspData += "<centroid-x>" + (cm.m10/cm.m00) + "</centroid-x>";
+             rspData += "<centroid-y>" + (cm.m01/cm.m00) + "</centroid-y>";
+             rspData += "</tote>";
+        }
+    }
+
+    rspData += "</tote-list>";
+
+    return rspData;
+}
 
 static int
 answer_to_connection( void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls )
@@ -308,6 +368,20 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
 
         response = MHD_create_response_from_buffer( bufLength, (void *) imageBuf, MHD_RESPMEM_PERSISTENT );
         MHD_add_response_header( response, "Content-Type", MIMETYPE );
+        ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
+        MHD_destroy_response( response );
+        return ret;
+    }
+#endif
+
+#if 1
+    if( ( strcmp( url, "/tote/data" ) == 0 ) || ( strcmp( url, "/tote/data/" ) == 0 ) )
+    {
+  
+        std::string rspData = getContourData();
+
+        response = MHD_create_response_from_buffer( rspData.size(), (void *) rspData.c_str(), MHD_RESPMEM_PERSISTENT );
+        MHD_add_response_header( response, "Content-Type", "text/xml" );
         ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
         MHD_destroy_response( response );
         return ret;
