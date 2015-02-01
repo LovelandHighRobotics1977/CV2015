@@ -194,39 +194,39 @@ int getContourImage()
     /// Apply the erosion operation
     //cv::erode( src_gray, src_gray, element );
 
-  erosion_size = 4;
-  Mat element = getStructuringElement( MORPH_RECT, Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point( erosion_size, erosion_size ) );
+  //erosion_size = 4;
+  //Mat element = getStructuringElement( MORPH_RECT, Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point( erosion_size, erosion_size ) );
 
   /// Apply the erosion operation
-  erode( src_gray, src_gray, element );
+  //erode( src_gray, src_gray, element );
 
-  char* gray_window = "GrayScale";
-  namedWindow( gray_window, CV_WINDOW_AUTOSIZE );
-  imshow( gray_window, src_gray );
+  //char* gray_window = "GrayScale";
+  //namedWindow( gray_window, CV_WINDOW_AUTOSIZE );
+  //imshow( gray_window, src_gray );
 
   //createTrackbar( " Canny thresh:", "Source", &thresh, max_thresh, thresh_callback );
   //thresh_callback( 0, 0 );
 
   //Mat canny_output;
-  vector<vector<Point> > contours;
-  vector<Vec4i> hierarchy;
+  vector<vector<cv::Point> > contours;
+  vector<cv::Vec4i> hierarchy;
   //int thresh = 100;
   //int max_thresh = 255;
-  RNG rng(12345);
+  cv::RNG rng(12345);
 
   /// Find contours
-  findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+  findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
 
   /// Draw contours
-  Mat drawing = Mat::zeros( src_gray.size(), CV_8UC3 );
+  cv::Mat drawing = cv::Mat::zeros( src_gray.size(), CV_8UC3 );
   for( int i = 0; i< contours.size(); i++ )
   {
       double CA = contourArea( contours[i], false );
       printf( "Countour( %d ) - Area: %g \n", i, CA );
       if( CA >= 50000 )
       {
-         Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-         drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+         cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+         drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, cv::Point() );
       }
   }
 
