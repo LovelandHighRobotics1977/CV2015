@@ -183,42 +183,55 @@ int getContourImage()
     cv::cvtColor( image, src_gray, CV_BGR2HSV );
     cv::blur( src_gray, src_gray, cv::Size(3,3) );
 
-    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+    cv::inRange( src_gray, cv::Scalar(23, 100, 100), cv::Scalar(28, 255, 255), src_gray);
     //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
 
     //MORPH_RECT
     //MORPH_CROSS
     //MORPH_ELLIPSE
 
-    int erosion_size = 4;
-    cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
+    //int erosion_size = 4;
+    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
 
     /// Apply the erosion operation
-    cv::erode( src_gray, src_gray, element );
+    //cv::erode( src_gray, src_gray, element );
 
-  vector<vector<cv::Point> > contours;
-  vector<cv::Vec4i> hierarchy;
-  cv::RNG rng(12345);
+    vector<vector<cv::Point> > contours;
+    vector<cv::Vec4i> hierarchy;
+    cv::RNG rng(12345);
 
-  /// Find contours
-  findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
+    /// Find contours
+    findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
 
-  /// Draw contours
-  cv::Mat drawing = cv::Mat::zeros( src_gray.size(), CV_8UC3 );
-  for( int i = 0; i< contours.size(); i++ )
-  {
-      double CA = contourArea( contours[i], false );
-      printf( "Countour( %d ) - Area: %g \n", i, CA );
-      if( CA >= 50000 )
-      {
-         cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-         drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, cv::Point() );
+    /// Find the rotated rectangles and ellipses for each contour
+    vector<cv::RotatedRect> minRect( contours.size() );
 
-         cv::Moments cm = moments( contours[i] );
+    for( int i = 0; i < contours.size(); i++ )
+    {
+        minRect[i] = minAreaRect( cv::Mat( contours[i] ) );
+    }
 
-         circle( drawing, cv::Point( (cm.m10/cm.m00), (cm.m01/cm.m00) ), 2, color );
-      }
-  }
+    /// Draw contours
+    cv::Mat drawing = cv::Mat::zeros( src_gray.size(), CV_8UC3 );
+    for( int i = 0; i< contours.size(); i++ )
+    {
+        double CA = contourArea( contours[i], false );
+        printf( "Countour( %d ) - Area: %g \n", i, CA );
+        if( CA >= 10000 )
+        {
+            cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+            drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, cv::Point() );
+
+            cv::Moments cm = moments( contours[i] );
+
+            circle( drawing, cv::Point( (cm.m10/cm.m00), (cm.m01/cm.m00) ), 2, color );
+
+            // rotated rectangle
+            cv::Point2f rect_points[4]; minRect[i].points( rect_points );
+            for( int j = 0; j < 4; j++ )
+               line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
+        }
+    }
 
     cv::vector<uchar> buf;
     cv::imencode(".jpg", drawing, buf, std::vector<int>() );
@@ -273,7 +286,7 @@ std::string getContourData()
     {
         double CA = contourArea( contours[i], false );
         printf( "Countour( %d ) - Area: %g \n", i, CA );
-        if( CA >= 50000 )
+        if( CA >= 10000 )
         {
              cv::Moments cm = moments( contours[i] );
 
