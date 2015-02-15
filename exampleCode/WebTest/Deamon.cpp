@@ -35,14 +35,14 @@ bool startCamera()
     int width  = 1280;
     int height = 960;
 
-    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
-    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
-    Camera.set ( CV_CAP_PROP_BRIGHTNESS, 50 );
-    Camera.set ( CV_CAP_PROP_CONTRAST, 50 );
-    Camera.set ( CV_CAP_PROP_SATURATION, 50 );
-    Camera.set ( CV_CAP_PROP_GAIN, 50 );
-    //Camera.set ( CV_CAP_PROP_FORMAT, CV_8UC1 ); // Do Gray Scale
-    //Camera.set ( CV_CAP_PROP_EXPOSURE, ?  );
+    Camera.set( cv::CAP_PROP_FRAME_WIDTH, width );
+    Camera.set( cv::CAP_PROP_FRAME_HEIGHT, height );
+    Camera.set ( cv::CAP_PROP_BRIGHTNESS, 50 );
+    Camera.set ( cv::CAP_PROP_CONTRAST, 50 );
+    Camera.set ( cv::CAP_PROP_SATURATION, 50 );
+    Camera.set ( cv::CAP_PROP_GAIN, 50 );
+    //Camera.set ( cv::CAP_PROP_FORMAT, CV_8UC1 ); // Do Gray Scale
+    //Camera.set ( cv::CAP_PROP_EXPOSURE, ?  );
 
     cout<<"Connecting to camera"<<endl;
     if ( !Camera.open() ) {
@@ -60,32 +60,55 @@ void stopCamera()
     Camera.release();
 }
 
-int getImage()
+bool 
+retrieveImage( cv::Mat &image )
 {
-//    int width  = 1280;
-//    int height = 960;
-
-//    cout << "Initializing ..." << width << "x" << height << endl;
-
-//    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
-//    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
-//    Camera.open();
-
-    cv::Mat image;
-
     cout << "capturing" << endl;
 
     if( !Camera.grab() )
     {
         cerr << "Error in grab" << endl;
-        return 0;
+        return true;
     }
 
     Camera.retrieve( image );
 
-    //cv::imwrite( "StillCamTest.jpg", image );
+    return false;
+}
 
-    cv::vector<uchar> buf;
+bool
+thresholdImage( cv::Mat &src, cv::Mat &dst )
+{
+    /// Convert image to gray and blur it
+    cv::cvtColor( src, dst, cv::COLOR_BGR2HSV );
+    cv::blur( dst, dst, cv::Size(3,3) );
+
+    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+    //cv::inRange( src_gray, cv::Scalar(23, 100, 100), cv::Scalar(28, 255, 255), src_gray);
+    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
+
+    // Red
+    cv::inRange( dst, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), dst);
+
+    return false;
+}
+
+bool
+erodeImage( cv::Mat src, cv::Mat dst )
+{
+    int erosion_size = 4;
+    cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
+
+    /// Apply the erosion operation
+    cv::erode( src, dst, element );
+
+    return false;
+}
+
+int
+buildResponseImage( cv::Mat &image )
+{
+    std::vector<uchar> buf;
     cv::imencode(".jpg", image, buf, std::vector<int>() );
     
     imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
@@ -94,114 +117,48 @@ int getImage()
     return buf.size();
 }
 
-int getToteImage()
+
+
+int getImage()
 {
-//    int width  = 1280;
-//    int height = 960;
-
-//    cout << "Initializing ..." << width << "x" << height << endl;
-
-//    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
-//    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
-
-    //printf( "Format: %d\n", Camera.getFormat() );
-
-//    Camera.open();
-
     cv::Mat image;
 
-    cout << "capturing" << endl;
+    retrieveImage( image );
 
-    if( !Camera.grab() )
-    {
-        cerr << "Error in grab" << endl;
-        return 0;
-    }
+    return buildResponseImage( image );
+}
 
-    Camera.retrieve( image );
+int getToteImage()
+{
+    cv::Mat image; 
+    cv::Mat gray;
 
-    //cv::imwrite( "StillCamTest.jpg", image );
-    cv::Mat src; cv::Mat src_gray; cv::Mat dst;
+    retrieveImage( image );
 
-    /// Convert image to gray and blur it
-    cv::cvtColor( image, src_gray, CV_BGR2HSV );
-    cv::blur( src_gray, src_gray, cv::Size(3,3) );
+    thresholdImage( image, gray );
 
-    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
-    cv::inRange( src_gray, cv::Scalar(23, 100, 100), cv::Scalar(28, 255, 255), src_gray);
-    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
-
-    //MORPH_RECT
-    //MORPH_CROSS
-    //MORPH_ELLIPSE
-
-    //int erosion_size = 4;
-    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
-
-    /// Apply the erosion operation
-    //cv::erode( src_gray, src_gray, element );
-
-    cv::vector<uchar> buf;
-    cv::imencode(".jpg", src_gray, buf, std::vector<int>() );
-    
-    imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
-    memcpy( imageBuf, &buf[0], buf.size() );
-
-    return buf.size();
+    return buildResponseImage( gray );
 }
 
 int getContourImage()
 {
-//    int width  = 1280;
-//    int height = 960;
+    cv::Mat image; 
+    cv::Mat gray;
 
-//    cout << "Initializing ..." << width << "x" << height << endl;
+    retrieveImage( image );
 
-//    Camera.set( CV_CAP_PROP_FRAME_WIDTH, width );
-//    Camera.set( CV_CAP_PROP_FRAME_HEIGHT, height );
+    thresholdImage( image, gray );
 
-    //printf( "Format: %d\n", Camera.getFormat() );
+    //erodeImage( gray, gray );
 
-//    Camera.open();
-
-    cv::Mat image;
-
-    cout << "capturing" << endl;
-
-    if( !Camera.grab() )
-    {
-        cerr << "Error in grab" << endl;
-        return 0;
-    }
-
-    Camera.retrieve( image );
-
-    //cv::imwrite( "StillCamTest.jpg", image );
-    cv::Mat src; cv::Mat src_gray; cv::Mat dst;
-
-    /// Convert image to gray and blur it
-    cv::cvtColor( image, src_gray, CV_BGR2HSV );
-    cv::blur( src_gray, src_gray, cv::Size(3,3) );
-
-    cv::inRange( src_gray, cv::Scalar(23, 100, 100), cv::Scalar(28, 255, 255), src_gray);
-    //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
-
-    //MORPH_RECT
-    //MORPH_CROSS
-    //MORPH_ELLIPSE
-
-    //int erosion_size = 4;
-    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
-
-    /// Apply the erosion operation
-    //cv::erode( src_gray, src_gray, element );
-
+    return buildResponseImage( gray );
+#if 0
     vector<vector<cv::Point> > contours;
     vector<cv::Vec4i> hierarchy;
     cv::RNG rng(12345);
 
     /// Find contours
-    findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
+    findContours( src_gray, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
 
     /// Find the rotated rectangles and ellipses for each contour
     vector<cv::RotatedRect> minRect( contours.size() );
@@ -233,13 +190,14 @@ int getContourImage()
         }
     }
 
-    cv::vector<uchar> buf;
+    std::vector<uchar> buf;
     cv::imencode(".jpg", drawing, buf, std::vector<int>() );
     
     imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
     memcpy( imageBuf, &buf[0], buf.size() );
 
     return buf.size();
+#endif
 }
 
 std::string getContourData()
@@ -260,10 +218,11 @@ std::string getContourData()
     cv::Mat src; cv::Mat src_gray; cv::Mat dst;
 
     /// Convert image to gray and blur it
-    cv::cvtColor( image, src_gray, CV_BGR2HSV );
+    cv::cvtColor( image, src_gray, cv::COLOR_BGR2HSV );
     cv::blur( src_gray, src_gray, cv::Size(3,3) );
 
-    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+//    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
+    cv::inRange( src_gray, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), src_gray);
 
     int erosion_size = 4;
     cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
@@ -276,7 +235,15 @@ std::string getContourData()
     cv::RNG rng(12345);
 
     /// Find contours
-    findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
+    findContours( src_gray, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
+
+    /// Find the rotated rectangles and ellipses for each contour
+    vector<cv::RotatedRect> minRect( contours.size() );
+
+    for( int i = 0; i < contours.size(); i++ )
+    {
+        minRect[i] = minAreaRect( cv::Mat( contours[i] ) );
+    }
 
     rspData << "<tote-list>";
 
@@ -294,6 +261,23 @@ std::string getContourData()
              rspData << "<contour-area>" << CA << "</contour-area>";
              rspData << "<centroid-x>" << (cm.m10/cm.m00) << "</centroid-x>";
              rspData << "<centroid-y>" << (cm.m01/cm.m00) << "</centroid-y>";
+             rspData << "<rbox-cx>" << minRect[i].center.x << "</rbox-cx>";
+             rspData << "<rbox-cy>" << minRect[i].center.y << "</rbox-cy>";
+             rspData << "<rbox-w>" << minRect[i].size.width << "</rbox-w>";
+             rspData << "<rbox-h>" << minRect[i].size.height << "</rbox-h>";
+             rspData << "<rbox-angle>" << minRect[i].angle << "</rbox-angle>";
+             rspData << "<rbox-aspect>" << (minRect[i].size.width/minRect[i].size.height) << "</rbox-aspect>";
+
+             cv::Point2f rectPts[4];
+             minRect[i].points( rectPts );
+
+             double cornerDist[4];
+             for( int j = 0; j < 4; j++ )
+             {
+                 cornerDist[j] = pointPolygonTest( contours[i], rectPts[j], true );
+                 rspData << "<rbox-dist>" << cornerDist[j] << "</rbox-dist>";
+             }
+
              rspData << "</tote>";
         }
     }
@@ -394,7 +378,7 @@ answer_to_connection( void *cls, struct MHD_Connection *connection, const char *
   
         std::string rspData = getContourData();
 
-        response = MHD_create_response_from_buffer( rspData.size(), (void *) rspData.c_str(), MHD_RESPMEM_PERSISTENT );
+        response = MHD_create_response_from_buffer( rspData.size(), (void *) rspData.c_str(), MHD_RESPMEM_MUST_COPY );
         MHD_add_response_header( response, "Content-Type", "text/xml" );
         ret = MHD_queue_response( connection, MHD_HTTP_OK, response );
         MHD_destroy_response( response );

@@ -11,19 +11,21 @@
 using namespace cv;
 using namespace std;
 
-IplImage* GetThresholdedImage(IplImage* img)
+#if 0
+Mat* GetThresholdedImage(Mat* img)
 {
     // Convert the image into an HSV image
-    IplImage* imgHSV = cvCreateImage(cvGetSize(img), 8, 3);
-    cvCvtColor(img, imgHSV, CV_BGR2HSV);
+    Mat* imgHSV = cvCreateImage(cvGetSize(img), 8, 3);
+    cvCvtColor(img, imgHSV, COLOR_BGR2HSV);
 
-    IplImage* imgThreshed = cvCreateImage(cvGetSize(img), 8, 1);
+    Mat* imgThreshed = cvCreateImage(cvGetSize(img), 8, 1);
 
     cvInRangeS(imgHSV, cvScalar(20, 100, 100), cvScalar(30, 255, 255), imgThreshed);
 
     cvReleaseImage(&imgHSV);
     return imgThreshed;
 }
+#endif
 
 Mat src; Mat src_gray; Mat dst;
 int erosion_size = 2;
@@ -37,12 +39,12 @@ int main( int argc, char** argv )
   resize(src, dst, Size(), 0.5, 0.5, INTER_AREA);
 
   /// Convert image to gray and blur it
-  cvtColor( dst, src_gray, CV_BGR2HSV );
+  cvtColor( dst, src_gray, COLOR_BGR2HSV );
   blur( src_gray, src_gray, Size(3,3) );
 
   /// Create Window
   char* source_window = "Source";
-  namedWindow( source_window, CV_WINDOW_AUTOSIZE );
+  namedWindow( source_window, WINDOW_AUTOSIZE );
   imshow( source_window, dst );
 
   inRange( src_gray, Scalar(20, 100, 100), Scalar(30, 255, 255), src_gray);
@@ -58,7 +60,7 @@ int main( int argc, char** argv )
   erode( src_gray, src_gray, element );
 
   char* gray_window = "GrayScale";
-  namedWindow( gray_window, CV_WINDOW_AUTOSIZE );
+  namedWindow( gray_window, WINDOW_AUTOSIZE );
   imshow( gray_window, src_gray );
 
   //createTrackbar( " Canny thresh:", "Source", &thresh, max_thresh, thresh_callback );
@@ -77,7 +79,7 @@ int main( int argc, char** argv )
   //Canny( src_gray, canny_output, 100, 200, 5 );
 
   /// Find contours
-  findContours( src_gray, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+  findContours( src_gray, contours, hierarchy, RETR_TREE, CHAIN_APPROX_SIMPLE, Point(0, 0) );
 
   /// Draw contours
   Mat drawing = Mat::zeros( src_gray.size(), CV_8UC3 );
@@ -144,7 +146,7 @@ int main( int argc, char** argv )
   // Calculate the moments
 
   /// Show in a window
-  namedWindow( "Contours", CV_WINDOW_AUTOSIZE );
+  namedWindow( "Contours", WINDOW_AUTOSIZE );
   imshow( "Contours", drawing );
 
   waitKey(0);
