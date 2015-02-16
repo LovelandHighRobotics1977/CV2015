@@ -64,11 +64,14 @@ class TemplateObj
 {
     private:
         vector< cv::Point > idealContour;
-
+        
     public:
 
         TemplateObj();
        ~TemplateObj();
+
+        void clearPoints();
+        void addPoint( unsigned int x, unsigned int y );
 
         vector< cv::Point > getIdealContour();
 };
@@ -83,11 +86,37 @@ TemplateObj::~TemplateObj()
 
 }
 
+void 
+TemplateObj::clearPoints()
+{
+    idealContour.clear();
+}
+
+void 
+TemplateObj::addPoint( unsigned int x, unsigned int y )
+{
+    cv::Point newPt( x, y );
+
+    idealContour.push_back( newPt );
+}
+
 vector< cv::Point > 
 TemplateObj::getIdealContour()
 {
+    std::cout << "Contourpoints: " << idealContour.size() << std::endl;
     return idealContour;
 }
+
+TemplateObj gToteSide;
+TemplateObj gToteEnd;
+
+typedef enum SceneObjTypes
+{
+    SCNOBJ_TYPE_UNKNOWN,         // No category assigned.
+    SCNOBJ_TYPE_Y_BLOB,          // A blob of yellow, no shape match
+    SCNOBJ_TYPE_Y_TOTE_LONGSIDE, // The long side of a yellow tote 
+    SCNOBJ_TYPE_Y_TOTE_END,      // The end of a yellow tote     
+}SCNOBJ_TYPE_T;
 
 class SceneObj
 {
@@ -95,6 +124,9 @@ class SceneObj
         unsigned int    contourIndex;
         cv::RotatedRect minRect;
         cv::Moments     cm;
+
+        SCNOBJ_TYPE_T   type;
+        double matchConfidence;
 
     public:
 
@@ -111,11 +143,18 @@ class SceneObj
         void setMinRect( cv::RotatedRect newRect );
         cv::RotatedRect getMinRect();
 
+        void setMatchConfidence( double matchValue );
+        double getMatchConfidence();
+
+        void setType( SCNOBJ_TYPE_T newType );
+        SCNOBJ_TYPE_T getType();
+        std::string getTypeAsStr();
 };
 
 SceneObj::SceneObj()
 {
-
+    type = SCNOBJ_TYPE_UNKNOWN;
+    matchConfidence = 0;
 }
 
 SceneObj::~SceneObj()
@@ -164,6 +203,49 @@ cv::RotatedRect
 SceneObj::getMinRect()
 {
     return minRect;
+}
+
+void 
+SceneObj::setType( SCNOBJ_TYPE_T newType )
+{
+    type = newType;
+}
+
+SCNOBJ_TYPE_T 
+SceneObj::getType()
+{
+    return type;
+}
+
+std::string
+SceneObj::getTypeAsStr()
+{
+    switch( type )
+    {
+        case SCNOBJ_TYPE_UNKNOWN:
+            return "unknown";
+
+        case SCNOBJ_TYPE_Y_BLOB:
+            return "y-blob";
+
+        case SCNOBJ_TYPE_Y_TOTE_LONGSIDE:
+            return "y-tote-longside";
+
+        case SCNOBJ_TYPE_Y_TOTE_END:
+            return "y-tote-end";
+    }
+}
+
+void 
+SceneObj::setMatchConfidence( double matchValue )
+{
+    matchConfidence = matchValue;
+}
+
+double 
+SceneObj::getMatchConfidence()
+{
+    return matchConfidence;
 }
 
 class Scene
@@ -230,11 +312,13 @@ Scene::thresholdImage()
     cv::blur( image, image, cv::Size(3,3) );
 
     //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
-    //cv::inRange( src_gray, cv::Scalar(23, 100, 100), cv::Scalar(28, 255, 255), src_gray);
+    // Yellow bin
+    cv::inRange( image, cv::Scalar(23, 100, 100), cv::Scalar(28, 255, 255), image);
+    
     //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
 
     // Red
-    cv::inRange( image, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), image );
+    //cv::inRange( image, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), image );
 
     return false;
 }
@@ -270,6 +354,24 @@ Scene::findObjects()
             obj.setMoments( moments( contours[i] ) );
             obj.setMinRect( minAreaRect( cv::Mat( contours[i] ) ) );
 
+            double matchVal = matchShapes( contours[ i ], gToteSide.getIdealContour(), 1, 0 );
+            std::cout << "Tote Side matchVal: " << matchVal << std::endl;
+
+            if( matchVal < 0.2 )
+            {
+                obj.setType( SCNOBJ_TYPE_Y_TOTE_LONGSIDE );
+                obj.setMatchConfidence( matchVal );            
+            }
+
+            matchVal = matchShapes( contours[ i ], gToteEnd.getIdealContour(), 1, 0 );
+            std::cout << "Tote End matchVal: " << matchVal << std::endl;
+
+            if( matchVal < 0.2 )
+            {
+                obj.setType( SCNOBJ_TYPE_Y_TOTE_END );
+                obj.setMatchConfidence( matchVal );            
+            }
+
             objList.push_back( obj );
         }
     }
@@ -284,6 +386,12 @@ Scene::createObjectImage()
 
     cv::Mat drawing = cv::Mat::zeros( image.size(), CV_8UC3 );
 
+    cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+
+    vector< vector< cv::Point > > tmplContours;
+    tmplContours.push_back( gToteSide.getIdealContour() );
+    drawContours( drawing, tmplContours, 0, color, 2, 8 );
+
     for( std::vector< SceneObj >::iterator it = objList.begin(); it != objList.end(); it++ )
     {
         cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
@@ -297,6 +405,8 @@ Scene::createObjectImage()
         for( int j = 0; j < 4; j++ )
             line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
 
+        double matchVal = matchShapes( contours[it->getContourIndex()], tmplContours[0], 1, 0 );
+        std::cout << "matchVal: " << matchVal << std::endl; 
     }
  
     // Replace the original image
@@ -316,6 +426,9 @@ Scene::getObjectListAsContent()
     for( std::vector< SceneObj >::iterator it = objList.begin(); it != objList.end(); it++ )
     {
         rspData << "<tote>";
+        rspData << "<type>" << it->getTypeAsStr() << "</type>";
+        rspData << "<confidence>" << it->getMatchConfidence() << "</confidence>";
+
         rspData << "<contour-area>" << it->getContourArea() << "</contour-area>";
 
         cv::Point centroid = it->getContourCentroid();
@@ -572,6 +685,16 @@ main ()
     // Try to open the camera
     if( startCamera() )
         return 1;
+
+    gToteSide.addPoint( 0, 0 );
+    gToteSide.addPoint( 533, 0 );
+    gToteSide.addPoint( 490, 239 );
+    gToteSide.addPoint( 35, 239 );
+
+    gToteEnd.addPoint( 0, 0 );
+    gToteEnd.addPoint( 336, 0 );
+    gToteEnd.addPoint( 306, 243 );
+    gToteEnd.addPoint( 30, 243 );
 
     daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &answer_to_connection, NULL, MHD_OPTION_END );
 
