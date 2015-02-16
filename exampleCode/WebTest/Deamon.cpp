@@ -60,6 +60,35 @@ void stopCamera()
     Camera.release();
 }
 
+class TemplateObj
+{
+    private:
+        vector< cv::Point > idealContour;
+
+    public:
+
+        TemplateObj();
+       ~TemplateObj();
+
+        vector< cv::Point > getIdealContour();
+};
+
+TemplateObj::TemplateObj()
+{
+
+}
+
+TemplateObj::~TemplateObj()
+{
+
+}
+
+vector< cv::Point > 
+TemplateObj::getIdealContour()
+{
+    return idealContour;
+}
+
 class SceneObj
 {
     private:
