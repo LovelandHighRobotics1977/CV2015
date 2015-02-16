@@ -60,8 +60,125 @@ void stopCamera()
     Camera.release();
 }
 
+class SceneObj
+{
+    private:
+        unsigned int    contourIndex;
+        cv::RotatedRect minRect;
+        cv::Moments     cm;
+
+    public:
+
+        SceneObj();
+       ~SceneObj();
+
+        void setContourIndex( unsigned int index );
+        unsigned int getContourIndex();
+
+        void setMoments( cv::Moments newMoments );
+        unsigned int getContourArea();
+        cv::Point getContourCentroid();
+
+        void setMinRect( cv::RotatedRect newRect );
+        cv::RotatedRect getMinRect();
+
+};
+
+SceneObj::SceneObj()
+{
+
+}
+
+SceneObj::~SceneObj()
+{
+
+}
+
+void
+SceneObj::setContourIndex( unsigned int index )
+{
+    contourIndex = index;
+}
+
+unsigned int 
+SceneObj::getContourIndex()
+{
+    return contourIndex;
+}
+
+void
+SceneObj::setMoments( cv::Moments newMoments )
+{
+    cm = newMoments;
+}
+
+unsigned int 
+SceneObj::getContourArea()
+{
+    return cm.m00;
+}
+
+cv::Point 
+SceneObj::getContourCentroid()
+{
+    cv::Point centroid( (cm.m10/cm.m00), (cm.m01/cm.m00) );
+    return centroid;
+}
+
+void
+SceneObj::setMinRect( cv::RotatedRect newRect )
+{
+    minRect = newRect;
+}
+
+cv::RotatedRect
+SceneObj::getMinRect()
+{
+    return minRect;
+}
+
+class Scene
+{
+    private:
+
+        cv::Mat image;
+
+        vector< vector< cv::Point > > contours;
+        vector< cv::Vec4i > hierarchy;
+
+        vector< SceneObj > objList;
+        
+        unsigned int minObjectArea;
+
+    public:
+        Scene();
+       ~Scene();
+
+        bool retrieveImage();
+
+        bool thresholdImage();
+        bool erodeImage();
+
+        bool findObjects();   
+        bool createObjectImage();     
+
+        std::string getObjectListAsContent();
+
+        int buildResponseImage();
+};
+
+Scene::Scene()
+{
+    minObjectArea = 10000;
+}
+
+Scene::~Scene()
+{
+
+}
+
 bool 
-retrieveImage( cv::Mat &image )
+Scene::retrieveImage()
 {
     cout << "capturing" << endl;
 
@@ -77,36 +194,132 @@ retrieveImage( cv::Mat &image )
 }
 
 bool
-thresholdImage( cv::Mat &src, cv::Mat &dst )
+Scene::thresholdImage()
 {
     /// Convert image to gray and blur it
-    cv::cvtColor( src, dst, cv::COLOR_BGR2HSV );
-    cv::blur( dst, dst, cv::Size(3,3) );
+    cv::cvtColor( image, image, cv::COLOR_BGR2HSV );
+    cv::blur( image, image, cv::Size(3,3) );
 
     //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
     //cv::inRange( src_gray, cv::Scalar(23, 100, 100), cv::Scalar(28, 255, 255), src_gray);
     //cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(200, 255, 255), src_gray);
 
     // Red
-    cv::inRange( dst, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), dst);
+    cv::inRange( image, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), image );
 
     return false;
 }
 
 bool
-erodeImage( cv::Mat src, cv::Mat dst )
+Scene::erodeImage()
 {
     int erosion_size = 4;
     cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
 
     /// Apply the erosion operation
-    cv::erode( src, dst, element );
+    cv::erode( image, image, element );
 
     return false;
 }
 
+bool
+Scene::findObjects()
+{
+    /// Find contours
+    findContours( image, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
+
+    /// Look through contours
+    for( int i = 0; i< contours.size(); i++ )
+    {
+        double CA = contourArea( contours[i], false );
+        printf( "Countour( %d ) - Area: %g \n", i, CA );
+        if( CA >= minObjectArea )
+        {
+            SceneObj obj; 
+
+            obj.setContourIndex( i );
+            obj.setMoments( moments( contours[i] ) );
+            obj.setMinRect( minAreaRect( cv::Mat( contours[i] ) ) );
+
+            objList.push_back( obj );
+        }
+    }
+
+    return false;
+}
+
+bool
+Scene::createObjectImage()
+{
+    cv::RNG rng(12345);
+
+    cv::Mat drawing = cv::Mat::zeros( image.size(), CV_8UC3 );
+
+    for( std::vector< SceneObj >::iterator it = objList.begin(); it != objList.end(); it++ )
+    {
+        cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+        drawContours( drawing, contours, it->getContourIndex(), color, 2, 8, hierarchy, 0, cv::Point() );
+
+        circle( drawing, it->getContourCentroid(), 2, color );
+
+        // rotated rectangle
+        cv::Point2f rect_points[4]; 
+        it->getMinRect().points( rect_points );
+        for( int j = 0; j < 4; j++ )
+            line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
+
+    }
+ 
+    // Replace the original image
+    image = drawing;
+
+    return false;
+}
+
+std::string 
+Scene::getObjectListAsContent()
+{
+    stringstream rspData;;
+
+    rspData << "<tote-list>";
+
+    /// Draw contours
+    for( std::vector< SceneObj >::iterator it = objList.begin(); it != objList.end(); it++ )
+    {
+        rspData << "<tote>";
+        rspData << "<contour-area>" << it->getContourArea() << "</contour-area>";
+
+        cv::Point centroid = it->getContourCentroid();
+        rspData << "<centroid-x>" << (centroid.x) << "</centroid-x>";
+        rspData << "<centroid-y>" << (centroid.y) << "</centroid-y>";
+
+        rspData << "<rbox-cx>" << it->getMinRect().center.x << "</rbox-cx>";
+        rspData << "<rbox-cy>" << it->getMinRect().center.y << "</rbox-cy>";
+        rspData << "<rbox-w>" << it->getMinRect().size.width << "</rbox-w>";
+        rspData << "<rbox-h>" << it->getMinRect().size.height << "</rbox-h>";
+        rspData << "<rbox-angle>" << it->getMinRect().angle << "</rbox-angle>";
+        rspData << "<rbox-aspect>" << (it->getMinRect().size.width/it->getMinRect().size.height) << "</rbox-aspect>";
+
+        cv::Point2f rectPts[4];
+        it->getMinRect().points( rectPts );
+
+        double cornerDist[4];
+        for( int j = 0; j < 4; j++ )
+        {
+            cornerDist[j] = pointPolygonTest( contours[ it->getContourIndex() ], rectPts[j], true );
+            rspData << "<rbox-dist>" << cornerDist[j] << "</rbox-dist>";
+        }
+
+        rspData << "</tote>";
+    }
+
+    rspData << "</tote-list>";
+
+    return rspData.str();
+}
+
 int
-buildResponseImage( cv::Mat &image )
+Scene::buildResponseImage()
 {
     std::vector<uchar> buf;
     cv::imencode(".jpg", image, buf, std::vector<int>() );
@@ -117,174 +330,51 @@ buildResponseImage( cv::Mat &image )
     return buf.size();
 }
 
-
-
 int getImage()
 {
-    cv::Mat image;
+    Scene scn;
 
-    retrieveImage( image );
+    scn.retrieveImage();
 
-    return buildResponseImage( image );
+    return scn.buildResponseImage();
 }
 
 int getToteImage()
 {
-    cv::Mat image; 
-    cv::Mat gray;
+    Scene scn;
 
-    retrieveImage( image );
+    scn.retrieveImage();
+    scn.thresholdImage();
 
-    thresholdImage( image, gray );
-
-    return buildResponseImage( gray );
+    return scn.buildResponseImage();
 }
 
 int getContourImage()
 {
-    cv::Mat image; 
-    cv::Mat gray;
+    Scene scn;
 
-    retrieveImage( image );
+    scn.retrieveImage();
+    scn.thresholdImage();
+    scn.erodeImage();
 
-    thresholdImage( image, gray );
+    scn.findObjects();
+    scn.createObjectImage();
 
-    //erodeImage( gray, gray );
-
-    return buildResponseImage( gray );
-#if 0
-    vector<vector<cv::Point> > contours;
-    vector<cv::Vec4i> hierarchy;
-    cv::RNG rng(12345);
-
-    /// Find contours
-    findContours( src_gray, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
-
-    /// Find the rotated rectangles and ellipses for each contour
-    vector<cv::RotatedRect> minRect( contours.size() );
-
-    for( int i = 0; i < contours.size(); i++ )
-    {
-        minRect[i] = minAreaRect( cv::Mat( contours[i] ) );
-    }
-
-    /// Draw contours
-    cv::Mat drawing = cv::Mat::zeros( src_gray.size(), CV_8UC3 );
-    for( int i = 0; i< contours.size(); i++ )
-    {
-        double CA = contourArea( contours[i], false );
-        printf( "Countour( %d ) - Area: %g \n", i, CA );
-        if( CA >= 10000 )
-        {
-            cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-            drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, cv::Point() );
-
-            cv::Moments cm = moments( contours[i] );
-
-            circle( drawing, cv::Point( (cm.m10/cm.m00), (cm.m01/cm.m00) ), 2, color );
-
-            // rotated rectangle
-            cv::Point2f rect_points[4]; minRect[i].points( rect_points );
-            for( int j = 0; j < 4; j++ )
-               line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
-        }
-    }
-
-    std::vector<uchar> buf;
-    cv::imencode(".jpg", drawing, buf, std::vector<int>() );
-    
-    imageBuf = (unsigned char *) realloc( imageBuf, buf.size() );
-    memcpy( imageBuf, &buf[0], buf.size() );
-
-    return buf.size();
-#endif
+    return scn.buildResponseImage();
 }
 
 std::string getContourData()
 {
-    cv::Mat     image;
-    stringstream rspData;;
+    Scene scn;
 
-    cout << "capturing" << endl;
+    scn.retrieveImage();
+    scn.thresholdImage();
+    scn.erodeImage();
 
-    if( !Camera.grab() )
-    {
-        cerr << "Error in grab" << endl;
-        return 0;
-    }
+    scn.findObjects();
+    scn.createObjectImage();
 
-    Camera.retrieve( image );
-
-    cv::Mat src; cv::Mat src_gray; cv::Mat dst;
-
-    /// Convert image to gray and blur it
-    cv::cvtColor( image, src_gray, cv::COLOR_BGR2HSV );
-    cv::blur( src_gray, src_gray, cv::Size(3,3) );
-
-//    cv::inRange( src_gray, cv::Scalar(20, 100, 100), cv::Scalar(30, 255, 255), src_gray);
-    cv::inRange( src_gray, cv::Scalar(0, 100, 100), cv::Scalar(10, 255, 255), src_gray);
-
-    int erosion_size = 4;
-    cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*erosion_size + 1, 2*erosion_size+1 ), cv::Point( erosion_size, erosion_size ) );
-
-    /// Apply the erosion operation
-    cv::erode( src_gray, src_gray, element );
-
-    vector<vector<cv::Point> > contours;
-    vector<cv::Vec4i> hierarchy;
-    cv::RNG rng(12345);
-
-    /// Find contours
-    findContours( src_gray, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
-
-    /// Find the rotated rectangles and ellipses for each contour
-    vector<cv::RotatedRect> minRect( contours.size() );
-
-    for( int i = 0; i < contours.size(); i++ )
-    {
-        minRect[i] = minAreaRect( cv::Mat( contours[i] ) );
-    }
-
-    rspData << "<tote-list>";
-
-    /// Draw contours
-    cv::Mat drawing = cv::Mat::zeros( src_gray.size(), CV_8UC3 );
-    for( int i = 0; i< contours.size(); i++ )
-    {
-        double CA = contourArea( contours[i], false );
-        printf( "Countour( %d ) - Area: %g \n", i, CA );
-        if( CA >= 10000 )
-        {
-             cv::Moments cm = moments( contours[i] );
-
-             rspData << "<tote>";
-             rspData << "<contour-area>" << CA << "</contour-area>";
-             rspData << "<centroid-x>" << (cm.m10/cm.m00) << "</centroid-x>";
-             rspData << "<centroid-y>" << (cm.m01/cm.m00) << "</centroid-y>";
-             rspData << "<rbox-cx>" << minRect[i].center.x << "</rbox-cx>";
-             rspData << "<rbox-cy>" << minRect[i].center.y << "</rbox-cy>";
-             rspData << "<rbox-w>" << minRect[i].size.width << "</rbox-w>";
-             rspData << "<rbox-h>" << minRect[i].size.height << "</rbox-h>";
-             rspData << "<rbox-angle>" << minRect[i].angle << "</rbox-angle>";
-             rspData << "<rbox-aspect>" << (minRect[i].size.width/minRect[i].size.height) << "</rbox-aspect>";
-
-             cv::Point2f rectPts[4];
-             minRect[i].points( rectPts );
-
-             double cornerDist[4];
-             for( int j = 0; j < 4; j++ )
-             {
-                 cornerDist[j] = pointPolygonTest( contours[i], rectPts[j], true );
-                 rspData << "<rbox-dist>" << cornerDist[j] << "</rbox-dist>";
-             }
-
-             rspData << "</tote>";
-        }
-    }
-
-    rspData << "</tote-list>";
-
-    return rspData.str();
+    return scn.getObjectListAsContent();
 }
 
 static int
