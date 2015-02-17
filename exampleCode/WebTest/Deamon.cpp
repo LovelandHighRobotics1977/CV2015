@@ -109,6 +109,8 @@ TemplateObj::getIdealContour()
 
 TemplateObj gToteSide;
 TemplateObj gToteEnd;
+TemplateObj gToteAngleRight;
+TemplateObj gToteAngleLeft;
 
 typedef enum SceneObjTypes
 {
@@ -354,6 +356,11 @@ Scene::findObjects()
             obj.setMoments( moments( contours[i] ) );
             obj.setMinRect( minAreaRect( cv::Mat( contours[i] ) ) );
 
+            for( int j = 0; j < contours[i].size(); j++ )
+            {
+                std::cout << "Contour Point " << j << ":" << contours[i][j].x << ", " << contours[i][j].y << std::endl;
+            }
+
             double matchVal = matchShapes( contours[ i ], gToteSide.getIdealContour(), 1, 0 );
             std::cout << "Tote Side matchVal: " << matchVal << std::endl;
 
@@ -372,6 +379,12 @@ Scene::findObjects()
                 obj.setMatchConfidence( matchVal );            
             }
 
+            matchVal = matchShapes( contours[ i ], gToteAngleRight.getIdealContour(), 1, 0 );
+            std::cout << "Tote AngleRight matchVal: " << matchVal << std::endl;
+
+            matchVal = matchShapes( contours[ i ], gToteAngleLeft.getIdealContour(), 1, 0 );
+            std::cout << "Tote AngleLeft matchVal: " << matchVal << std::endl;
+
             objList.push_back( obj );
         }
     }
@@ -389,7 +402,7 @@ Scene::createObjectImage()
     cv::Scalar color = cv::Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
 
     vector< vector< cv::Point > > tmplContours;
-    tmplContours.push_back( gToteSide.getIdealContour() );
+    tmplContours.push_back( gToteAngleLeft.getIdealContour() );
     drawContours( drawing, tmplContours, 0, color, 2, 8 );
 
     for( std::vector< SceneObj >::iterator it = objList.begin(); it != objList.end(); it++ )
@@ -403,10 +416,7 @@ Scene::createObjectImage()
         cv::Point2f rect_points[4]; 
         it->getMinRect().points( rect_points );
         for( int j = 0; j < 4; j++ )
-            line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 );
-
-        double matchVal = matchShapes( contours[it->getContourIndex()], tmplContours[0], 1, 0 );
-        std::cout << "matchVal: " << matchVal << std::endl; 
+            line( drawing, rect_points[j], rect_points[(j+1)%4], color, 1, 8 ); 
     }
  
     // Replace the original image
@@ -688,13 +698,37 @@ main ()
 
     gToteSide.addPoint( 0, 0 );
     gToteSide.addPoint( 533, 0 );
+    gToteSide.addPoint( 533, 30 );
+    gToteSide.addPoint( 515, 30 );
     gToteSide.addPoint( 490, 239 );
     gToteSide.addPoint( 35, 239 );
+    gToteSide.addPoint( 20, 30 );
+    gToteSide.addPoint( 0, 30 );
 
     gToteEnd.addPoint( 0, 0 );
     gToteEnd.addPoint( 336, 0 );
+    gToteEnd.addPoint( 336, 30 );
+    gToteEnd.addPoint( 316, 30 );
     gToteEnd.addPoint( 306, 243 );
     gToteEnd.addPoint( 30, 243 );
+    gToteEnd.addPoint( 15, 30 );
+    gToteEnd.addPoint( 0, 30 );
+
+    gToteAngleRight.addPoint( 0, 66 );
+    gToteAngleRight.addPoint( 380, 0 );
+    gToteAngleRight.addPoint( 538, 47 );
+    gToteAngleRight.addPoint( 516, 52 );
+    gToteAngleRight.addPoint( 500, 262 );
+    gToteAngleRight.addPoint( 60, 262 );
+    gToteAngleRight.addPoint( 15, 70 );
+
+    gToteAngleLeft.addPoint( 538, 66 );    
+    gToteAngleLeft.addPoint( 158, 0 );     
+    gToteAngleLeft.addPoint( 0, 47 ); 
+    gToteAngleLeft.addPoint( 22, 52 );
+    gToteAngleLeft.addPoint( 30, 262 );
+    gToteAngleLeft.addPoint( 488, 262 );
+    gToteAngleLeft.addPoint( 508, 70 ); 
 
     daemon = MHD_start_daemon (MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &answer_to_connection, NULL, MHD_OPTION_END );
 
