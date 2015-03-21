@@ -15,6 +15,9 @@ IF( OpenCV_FOUND AND raspicam_CV_FOUND )
     TARGET_LINK_LIBRARIES( cvs1977 -lmicrohttpd )
     TARGET_LINK_LIBRARIES( cvs1977 -ldaemon )
 
+    CONFIGURE_FILE( ${CMAKE_SOURCE_DIR}/cvs1977_init.sh ${CMAKE_BINARY_DIR}/initscripts/cvs1977 @ONLY )
+
+    INSTALL( PROGRAMS ${CMAKE_BINARY_DIR}/initscripts/cvs1977 DESTINATION /etc/init.d/ )
     INSTALL( TARGETS cvs1977 DESTINATION /usr/bin/ )
 ELSE()
 
